@@ -1,0 +1,26 @@
+SemanticMenus
+=============
+
+It's a semantic menu generator which works well with Lockdown, and has both hierarchical and breadcrumbs support.
+
+Inspired by and based on Daniel Haran's semantic-menu.
+
+Example
+=======
+
+def AdminMenu
+  build_menu do |root|
+    add "User functions" do |user|
+      add "New user..." new_user_path
+      add "Manage users" users_path
+      add "Manage group access" groups_path
+    end
+    add "Messages" do |msg|
+      add "New message" new_message_path
+      add "INBOX" messages_path
+    end
+  end
+end
+
+
+Copyright (c) 2009 Balazs Nagy, released under the MIT license
