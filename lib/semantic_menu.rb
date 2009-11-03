@@ -52,17 +52,6 @@ module SemanticMenu
         flatten.compact.unshift(self)
     end
 
-    def to_s_breadcrumb
-      ret = ""
-      unless @link.nil?
-        ret = view.link_to(@title, @link, @opts)
-      end
-      if ret.empty?
-        ret = view.content_tag(:span, @title)
-      end
-      ret
-    end
-    
     def to_s_children
       if (@children.empty?)
         return ''
@@ -125,27 +114,40 @@ module SemanticMenu
     end
 
     def to_breadcrumb
-      bc = get_breadcrumb
-      ret = [ MenuItem.new(I18n.t(:menu_root), "/", 0) ]
-      if bc.nil?
-        ret += [view.content_tag :li, view.title]
+      thispage = @@controller.session[:thispage]
+      crumbs = @@controller.session[:crumbs]
+      if @@controller.session.has_key?(:crumbs) and crumbs.size > 0
+        if ((key = crumbs.assoc(thispage)))
+          crumbs.slice!(crumbs.index(key)+1..-1)
+        else
+          crumbs.push([thispage, @@view.title])
+        end
       else
-        bc = bc.dup
-        last = bc.pop.dup
-        last.link = nil
-        bc.push(last)
-        ret += bc.collect{|item| item.to_s_breadcrumb}.
-          reject{|item| item.nil? or item.empty?}.
-          collect { |item| view.content_tag :li, item }
+        crumbs = path_to_breadcrumb
       end
-      view.content_tag :ul, ret.join,
-        :class => "breadcrumbs" + (active? ? "" : " current")
+      scrumbs = (crumbs[0..-2] << [nil, crumbs[-1][1]]).map do |link, title|
+        title = @@view.send(:h, title)
+        link.nil? ? title : @@view.link_to(title, link)
+      end
+      scrumbs = scrumbs.join(" &raquo; ")
+      if (crumbs.length == 1)
+        scrumbs += " &raquo;"
+      end
+      scrumbs
     end
-    
-    protected
-    
-    def to_s_breadcrumb
-      nil
+
+    def path_to_breadcrumb
+      bc = get_breadcrumb
+      ret = [[ "/#{I18n.locale.to_s}/", I18n.t(:menu_root) ]]
+      if bc.nil?
+        return ret
+      end
+      bc = bc.dup
+      last = bc.pop.dup
+      last.link = nil
+      bc.push(last)
+      ret + bc.collect{ |item| [item.link, item.title] }.
+            reject { |item| item[0].empty? }
     end
   end
 end
