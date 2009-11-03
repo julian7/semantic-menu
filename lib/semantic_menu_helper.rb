@@ -4,6 +4,10 @@ module SemanticMenuHelper
   end
 
   def previous_page(by = 1)
-    (session[:crumbs][-by] || session[:crumbs[0]])[0]
+    begin
+      (session[:crumbs][-by] || session[:crumbs[0]])[0]
+    rescue
+      return "/"
+    end
   end
 end

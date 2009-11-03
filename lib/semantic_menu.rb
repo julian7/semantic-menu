@@ -46,7 +46,7 @@ module SemanticMenu
     
     def get_breadcrumb
       unless active?
-        return nil
+        return []
       end
       @children.map{ |child| child.get_breadcrumb }.
         flatten.compact.unshift(self)
@@ -117,13 +117,17 @@ module SemanticMenu
       thispage = @@controller.session[:thispage]
       crumbs = @@controller.session[:crumbs]
       if @@controller.session.has_key?(:crumbs) and crumbs.size > 0
+        #Rails.logger.info "Original crumbs: #{crumbs.inspect}"
         if ((key = crumbs.assoc(thispage)))
           crumbs.slice!(crumbs.index(key)+1..-1)
+          #Rails.logger.info "Page found in #{crumbs.index(key)}th element, stripping: #{crumbs.inspect}"
         else
           crumbs.push([thispage, @@view.title])
+          #Rails.logger.info "New page, push #{thispage}: #{crumbs.inspect}"
         end
       else
-        crumbs = path_to_breadcrumb
+        @@controller.session[:crumbs] = crumbs = path_to_breadcrumb
+        #Rails.logger.info "No crumbs found, generating: #{crumbs.inspect}"
       end
       scrumbs = (crumbs[0..-2] << [nil, crumbs[-1][1]]).map do |link, title|
         title = @@view.send(:h, title)
@@ -136,18 +140,16 @@ module SemanticMenu
       scrumbs
     end
 
+    def get_breadcrumb
+      [[@@view.url_for(:root) || "/", I18n.t(:menu_root)]] + super
+    end
+
     def path_to_breadcrumb
       bc = get_breadcrumb
-      ret = [[ "/#{I18n.locale.to_s}/", I18n.t(:menu_root) ]]
       if bc.nil?
-        return ret
+        return [["/", "/"]]
       end
-      bc = bc.dup
-      last = bc.pop.dup
-      last.link = nil
-      bc.push(last)
-      ret + bc.collect{ |item| [item.link, item.title] }.
-            reject { |item| item[0].empty? }
+      bc.map { |item| item.is_a?(Array) ? item : [item.link, item.title] }
     end
   end
 end
