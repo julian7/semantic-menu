@@ -82,7 +82,11 @@ module SemanticMenu
       if (@link == @@controller.request.request_uri)
         return true
       end
-      link_points_to = ActionController::Routing::Routes.recognize_path(@link, :method => @method)
+      link_points_to = if ActionController::Routing::Routes.respond_to? :recognize_path
+        ActionController::Routing::Routes.recognize_path(@link, :method => @method)
+      else
+        ActionDispatch::Routing::Routes.recognize_path(@link, :method => @method)
+      end
       req_points_to = @@controller.instance_variable_get(:@_params)
       if (@ctrl != false && req_points_to[:controller] == link_points_to[:controller])
         return true
@@ -110,7 +114,7 @@ module SemanticMenu
       if (!active?)
         opts[:class] += " current"
       end
-      view.content_tag(:ul, @children.collect(&:to_s).join, opts)
+      view.content_tag(:ul, @children.join, opts)
     end
 
     def to_breadcrumb
@@ -129,15 +133,19 @@ module SemanticMenu
         @@controller.session[:crumbs] = crumbs = path_to_breadcrumb
         #Rails.logger.info "No crumbs found, generating: #{crumbs.inspect}"
       end
-      scrumbs = (crumbs[0..-2] << [nil, crumbs[-1][1]]).map do |link, title|
-        title = @@view.send(:h, title)
-        link.nil? ? title : @@view.link_to(title, link)
+      scrumbs = (crumbs[0..-2] << [nil, crumbs[-1][1]]).reject do |link, title|
+        title.nil? or title.empty?
+      end.map do |link, title|
+        unless title.nil?
+          title = title.html_safe
+          link.nil? ? title : @@view.link_to(title, link)
+        end
       end
-      scrumbs = scrumbs.join(" &raquo; ")
+      scrumbs = scrumbs.join(" &raquo; ".html_safe)
       if (crumbs.length == 1)
-        scrumbs += " &raquo;"
+        scrumbs += " &raquo;".html_safe
       end
-      scrumbs
+      scrumbs.html_safe
     end
 
     def get_breadcrumb
