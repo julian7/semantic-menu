@@ -121,17 +121,13 @@ module SemanticMenu
       thispage = @@controller.session[:thispage]
       crumbs = @@controller.session[:crumbs]
       if @@controller.session.has_key?(:crumbs) and crumbs.size > 0
-        #Rails.logger.info "Original crumbs: #{crumbs.inspect}"
         if ((key = crumbs.assoc(thispage)))
           crumbs.slice!(crumbs.index(key)+1..-1)
-          #Rails.logger.info "Page found in #{crumbs.index(key)}th element, stripping: #{crumbs.inspect}"
         else
           crumbs.push([thispage, @@view.title])
-          #Rails.logger.info "New page, push #{thispage}: #{crumbs.inspect}"
         end
       else
         @@controller.session[:crumbs] = crumbs = path_to_breadcrumb
-        #Rails.logger.info "No crumbs found, generating: #{crumbs.inspect}"
       end
       scrumbs = (crumbs[0..-2] << [nil, crumbs[-1][1]]).reject do |link, title|
         title.nil? or title.empty?
