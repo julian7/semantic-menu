@@ -1,7 +1,7 @@
 module SemanticMenu
   class MenuItem
     attr_accessor :children, :link, :title
-    cattr_accessor :controller
+    cattr_accessor :ctrl
     cattr_accessor :view
     extend ActiveSupport::Memoizable
 
@@ -9,7 +9,7 @@ module SemanticMenu
       @title = title
       @link = link
       @method = opts.delete(:method) || :get
-      @ctrl = opts.delete(:controller) || false
+      @ctrl = opts.delete(:ctrl) || false
       @level = level
       @opts = opts
       @children = []
@@ -26,16 +26,16 @@ module SemanticMenu
       ret = ""
       unless @link.nil?
         has_link = true
-        ret = view.link_to(@title, @link, @opts)
+        ret = @@view.link_to(@title, @link, @opts)
       end
       if ret.empty?
         has_link = false
-        ret = view.content_tag(:span, @title)
+        ret = @@view.content_tag(:span, @title)
       end
       children = to_s_children
       unless children.empty?
         has_link = true
-        ret += children
+        ret << children
       end
       if has_link and !ret.empty?
         ret = view.content_tag :li, ret, active? ? {:class => "active"} : {}
@@ -53,12 +53,15 @@ module SemanticMenu
     end
 
     def to_s_children
+      ret = ''.html_safe
       if (@children.empty?)
-        return ''
+        return ret
       end
-      ret = @children.collect(&:to_s).join
+      ret = @children.inject(ret) do |ret, child|
+        ret.safe_concat child.to_s.html_safe
+      end
       if ret.empty?
-        ''
+        ret
       else
         css = ["menu_level_#{@level}"]
         if active?
@@ -67,7 +70,7 @@ module SemanticMenu
         if self.on_current_page? or @children.any?(&:on_current_page?)
           css << "current"
         end
-        view.content_tag(:ul, ret,  :class => css.join(" "))
+        view.content_tag(:ul, ret, :class => css.join(" "))
       end
     end
     
@@ -79,7 +82,7 @@ module SemanticMenu
       if (@link == nil)
         return false
       end
-      if (@link == @@controller.request.request_uri)
+      if (@link == @@ctrl.request.request_uri)
         return true
       end
       link_points_to = if ActionController::Routing::Routes.respond_to? :recognize_path
@@ -87,8 +90,8 @@ module SemanticMenu
       else
         ActionDispatch::Routing::Routes.recognize_path(@link, :method => @method)
       end
-      req_points_to = @@controller.instance_variable_get(:@_params)
-      if (@ctrl != false && req_points_to[:controller] == link_points_to[:controller])
+      req_points_to = @@ctrl.instance_variable_get(:@_params)
+      if (@ctrl != false && req_points_to[:@@ctrl] == link_points_to[:@@ctrl])
         return true
       end
       req_points_to == link_points_to
@@ -100,8 +103,8 @@ module SemanticMenu
   end
 
   class Menu < MenuItem
-    def initialize(controller, view, opts = {}, &block)
-      @@controller = controller
+    def initialize(ctrl, view, opts = {}, &block)
+      @@ctrl = ctrl
       @@view = view
       @level = 0
       @opts = {:class => 'menu'}.merge opts
@@ -114,34 +117,31 @@ module SemanticMenu
       if (!active?)
         opts[:class] += " current"
       end
-      view.content_tag(:ul, @children.join, opts)
+      @@view.content_tag(:ul, @children.inject(''.html_safe) {|r, e| r << e.to_s.html_safe}, opts)
     end
 
     def to_breadcrumb
-      thispage = @@controller.session[:thispage]
-      crumbs = @@controller.session[:crumbs]
-      if @@controller.session.has_key?(:crumbs) and crumbs.size > 0
+      thispage = @@ctrl.session[:thispage]
+      crumbs = @@ctrl.session[:crumbs]
+      if @@ctrl.session.has_key?(:crumbs) and crumbs.size > 0
         if ((key = crumbs.assoc(thispage)))
           crumbs.slice!(crumbs.index(key)+1..-1)
         else
           crumbs.push([thispage, @@view.title])
         end
       else
-        @@controller.session[:crumbs] = crumbs = path_to_breadcrumb
+        @@ctrl.session[:crumbs] = crumbs = path_to_breadcrumb
       end
-      scrumbs = (crumbs[0..-2] << [nil, crumbs[-1][1]]).reject do |link, title|
-        title.nil? or title.empty?
-      end.map do |link, title|
-        unless title.nil?
-          title = title.html_safe
-          link.nil? ? title : @@view.link_to(title, link)
-        end
+      crumbs = crumbs.dup.reject { |link, title| title.nil? or title.empty? }
+      crumbs[-1][0] = nil
+      crumbs = crumbs.map do |link, title|
+        link.nil? ? title.html_safe : @@view.link_to(title, link)
       end
-      scrumbs = scrumbs.join(" &raquo; ".html_safe)
+      crumbs = crumbs.join(" &raquo; ").html_safe
       if (crumbs.length == 1)
-        scrumbs += " &raquo;".html_safe
+        crumbs << " &raquo;".html_safe
       end
-      scrumbs.html_safe
+      crumbs
     end
 
     def get_breadcrumb
