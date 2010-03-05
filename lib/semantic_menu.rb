@@ -114,28 +114,24 @@ module SemanticMenu
     end
 
     def to_breadcrumb
-      thispage = @@controller.session[:thispage]
+      thispage = @@controller.request.fullpath
       crumbs = @@controller.session[:crumbs]
       if @@controller.session.has_key?(:crumbs) and crumbs.size > 0
-        #Rails.logger.info "Original crumbs: #{crumbs.inspect}"
         if ((key = crumbs.assoc(thispage)))
           crumbs.slice!(crumbs.index(key)+1..-1)
-          #Rails.logger.info "Page found in #{crumbs.index(key)}th element, stripping: #{crumbs.inspect}"
         else
           crumbs.push([thispage, @@view.title])
-          #Rails.logger.info "New page, push #{thispage}: #{crumbs.inspect}"
         end
       else
         @@controller.session[:crumbs] = crumbs = path_to_breadcrumb
-        #Rails.logger.info "No crumbs found, generating: #{crumbs.inspect}"
       end
-      scrumbs = (crumbs[0..-2] << [nil, crumbs[-1][1]]).map do |link, title|
+      crumbs = crumbs.dup
+      scrumbs = crumbs.map do |link, title|
         title = @@view.send(:h, title)
         link.nil? ? title : @@view.link_to(title, link)
-      end
-      scrumbs = scrumbs.join(" &raquo; ")
+      end.join(" &raquo; ")
       if (crumbs.length == 1)
-        scrumbs += " &raquo;"
+        scrumbs << " &raquo;"
       end
       scrumbs
     end
