@@ -54,7 +54,7 @@ module SemanticMenu
 
     def to_s_children
       ret = ''.html_safe
-      if (@children.empty?)
+      if @children.empty?
         return ret
       end
       ret = @children.inject(ret) do |ret, child|
@@ -79,19 +79,15 @@ module SemanticMenu
     end
     
     def on_current_page?
-      if (@link == nil)
+      if @link.nil?
         return false
       end
-      if (@link == @@ctrl.request.request_uri)
+      if @link == @@ctrl.request.fullpath
         return true
       end
-      link_points_to = if ActionController::Routing::Routes.respond_to? :recognize_path
-        ActionController::Routing::Routes.recognize_path(@link, :method => @method)
-      else
-        ActionDispatch::Routing::Routes.recognize_path(@link, :method => @method)
-      end
+      link_points_to = Rails.application.routes.recognize_path(@link, :method => @method)
       req_points_to = @@ctrl.instance_variable_get(:@_params)
-      if (@ctrl != false && req_points_to[:@@ctrl] == link_points_to[:@@ctrl])
+      if @ctrl != false && req_points_to[:@@ctrl] == link_points_to[:@@ctrl]
         return true
       end
       req_points_to == link_points_to
@@ -114,17 +110,17 @@ module SemanticMenu
     
     def to_s
       opts = @opts
-      if (!active?)
+      if !active?
         opts[:class] += " current"
       end
       @@view.content_tag(:ul, @children.inject(''.html_safe) {|r, e| r << e.to_s.html_safe}, opts)
     end
 
     def to_breadcrumb
-      thispage = @@ctrl.session[:thispage]
+      thispage = @@ctrl.request.fullpath
       crumbs = @@ctrl.session[:crumbs]
       if @@ctrl.session.has_key?(:crumbs) and crumbs.size > 0
-        if ((key = crumbs.assoc(thispage)))
+        if (key = crumbs.assoc(thispage))
           crumbs.slice!(crumbs.index(key)+1..-1)
         else
           crumbs.push([thispage, @@view.title])
@@ -132,14 +128,13 @@ module SemanticMenu
       else
         @@ctrl.session[:crumbs] = crumbs = path_to_breadcrumb
       end
-      crumbs = crumbs.dup.reject { |link, title| title.nil? or title.empty? }
-      crumbs[-1][0] = nil
-      crumbs = crumbs.map do |link, title|
+      scrumbs = (crumbs[0..-2] << [nil, crumbs[-1][1]]).map do |link, title|
+        title = @@view.send(:h, title)
         link.nil? ? title.html_safe : @@view.link_to(title, link)
       end
-      crumbs = crumbs.join(" &raquo; ").html_safe
-      if (crumbs.length == 1)
-        crumbs << " &raquo;".html_safe
+      scrumbs = scrumbs.join(" &raquo; ").html_safe
+      if crumbs.length == 1
+        scrumbs << " &raquo;".html_safe
       end
       crumbs
     end
