@@ -16,7 +16,7 @@ module SemanticMenu
     end
     
     def add(title, link = nil, opts = {}, &block)
-      returning (MenuItem.new(title, link, @level + 1, opts)) do |item|
+      MenuItem.new(title, link, @level + 1, opts).tap do |item|
         @children << item
         yield item if block_given?
       end
