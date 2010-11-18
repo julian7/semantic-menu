@@ -14,14 +14,14 @@ module SemanticMenu
       @opts = opts
       @children = []
     end
-    
+
     def add(title, link = nil, opts = {}, &block)
       MenuItem.new(title, link, @level + 1, opts).tap do |item|
         @children << item
         yield item if block_given?
       end
     end
-    
+
     def to_s
       ret = ""
       unless @link.nil?
@@ -42,60 +42,60 @@ module SemanticMenu
       end
     end
 
-    protected
-    
-    def get_breadcrumb
-      unless active?
-        return []
-      end
-      @children.map{ |child| child.get_breadcrumb }.
-        flatten.compact.unshift(self)
-    end
-
-    def to_s_children
-      ret = ''.html_safe
-      if @children.empty?
-        return ret
-      end
-      ret = @children.inject(ret) do |ret, child|
-        ret.safe_concat child.to_s.html_safe
-      end
-      if ret.empty?
-        ret
-      else
-        css = ["menu_level_#{@level}"]
-        if active?
-          css << "active"
-        end
-        if self.on_current_page? or @children.any?(&:on_current_page?)
-          css << "current"
-        end
-        view.content_tag(:ul, ret, :class => css.join(" "))
-      end
-    end
-    
     def active?
       @children.any?(&:active?) || on_current_page?
     end
-    
-    def on_current_page?
-      if @link.nil?
-        return false
-      end
-      if @link == @@ctrl.request.fullpath
-        return true
-      end
-      link_points_to = Rails.application.routes.recognize_path(@link, :method => @method)
-      req_points_to = @@ctrl.instance_variable_get(:@_params)
-      if @ctrl != false && req_points_to[:@@ctrl] == link_points_to[:@@ctrl]
-        return true
-      end
-      req_points_to == link_points_to
-    end
 
-    memoize :get_breadcrumb
-    memoize :active?
-    memoize :on_current_page?
+    protected
+
+      def get_breadcrumb
+        unless active?
+          return []
+        end
+        @children.map{ |child| child.get_breadcrumb }.
+          flatten.compact.unshift(self)
+      end
+
+      def to_s_children
+        ret = ''.html_safe
+        if @children.empty?
+          return ret
+        end
+        ret = @children.inject(ret) do |ret, child|
+          ret.safe_concat child.to_s.html_safe
+        end
+        if ret.empty?
+          ret
+        else
+          css = ["menu_level_#{@level}"]
+          if active?
+            css << "active"
+          end
+          if self.on_current_page? or @children.any?(&:on_current_page?)
+            css << "current"
+          end
+          view.content_tag(:ul, ret, :class => css.join(" "))
+        end
+      end
+
+      def on_current_page?
+        if @link.nil?
+          return false
+        end
+        if @link == @@ctrl.request.fullpath
+          return true
+        end
+        link_points_to = Rails.application.routes.recognize_path(@link, :method => @method)
+        req_points_to = @@ctrl.instance_variable_get(:@_params)
+        if @ctrl != false && req_points_to[:@@ctrl] == link_points_to[:@@ctrl]
+          return true
+        end
+        req_points_to == link_points_to
+      end
+
+      memoize :get_breadcrumb
+      memoize :active?
+      memoize :on_current_page?
   end
 
   class Menu < MenuItem
@@ -107,7 +107,7 @@ module SemanticMenu
       @children = []
       yield self if block_given?
     end
-    
+
     def to_s
       opts = @opts
       if !active?
